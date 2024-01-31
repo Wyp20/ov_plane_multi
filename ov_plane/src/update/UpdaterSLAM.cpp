@@ -160,12 +160,12 @@ void UpdaterSLAM::delayed_init(std::shared_ptr<State> state, std::vector<std::sh
 
         // Try to optimize the set of features to the current plane estimate
         // TODO: be smarter about how we get focal length here...
-        double focal_length = state->_cam_intrinsics_cameras.at(0)->get_value()(0);
+        double focal_length = state->_cam_intrinsics_cameras.at((*it1)->anchor_cam_id)->get_value()(0);
         double sigma_px = ((int)(*it1)->featid < state->_options.max_aruco_features) ? _options_aruco.sigma_pix : _options_slam.sigma_pix;
         double sigma_px_norm = sigma_px / focal_length;
         double sigma_c = state->_options.sigma_constraint;
         Eigen::VectorXd stateI = state->_imu->pose()->value();
-        Eigen::VectorXd calib0 = state->_calib_IMUtoCAM.at(0)->value();
+        Eigen::VectorXd calib0 = state->_calib_IMUtoCAM.at((*it1)->anchor_cam_id)->value();
         std::vector<std::shared_ptr<ov_core::Feature>> tmpvec = {(*it1)};
         if (state->_options.use_refine_plane_feat) {
           success_plane = PlaneFitting::optimize_plane(tmpvec, cp_inG, clones_cam, sigma_px_norm, sigma_c, true, stateI, calib0);

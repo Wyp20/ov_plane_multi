@@ -200,19 +200,20 @@ void UpdaterPlane::init_vio_plane(std::shared_ptr<State> state, std::vector<std:
   // SLAM: append features if they lie on a plane!
   // TODO: if we do this, the whole system seems to be a lot worst
   // TODO: how can we see if the SLAM feature is an inlier or not????
-  //  for (auto &feat : state->_features_SLAM) {
-  //    if (feat2plane.find(feat.first) == feat2plane.end())
-  //      continue;
-  //    size_t planeid = feat2plane.at(feat.first);
-  //    if (state->_features_PLANE.find(planeid) != state->_features_PLANE.end())
-  //      continue;
-  //    plane_feat_count[planeid]++;
-  //    auto featptr = std::make_shared<Feature>();
-  //    featptr->featid = feat.second->_featid;
-  //    featptr->p_FinG = feat.second->get_xyz(false);
-  //    assert(feat.second->_feat_representation == LandmarkRepresentation::Representation::GLOBAL_3D);
-  //    plane_feats[planeid].push_back(featptr);
-  //  }
+   for (auto &feat : state->_features_SLAM) {
+     if (feat2plane.find(feat.first) == feat2plane.end())
+       continue;
+     size_t planeid = feat2plane.at(feat.first);
+     if (state->_features_PLANE.find(planeid) != state->_features_PLANE.end())
+       continue;
+     plane_feat_count[planeid]++;
+     auto featptr = std::make_shared<Feature>();
+     featptr->anchor_cam_id = feat.second->_unique_camera_id;
+     featptr->featid = feat.second->_featid;
+     featptr->p_FinG = feat.second->get_xyz(false);
+     assert(feat.second->_feat_representation == LandmarkRepresentation::Representation::GLOBAL_3D);
+     plane_feats[planeid].push_back(featptr);
+   }
 
   // Debug print out stats
   for (auto const &planect : plane_feat_count) {
@@ -252,12 +253,13 @@ void UpdaterPlane::init_vio_plane(std::shared_ptr<State> state, std::vector<std:
 
     // Try to optimize this plane and features together
     // TODO: be smarter about how we get focal length here...
-    double focal_length = state->_cam_intrinsics_cameras.at(0)->get_value()(0);
+    size_t cam_id = featspair.second.at(0)->anchor_cam_id;
+    double focal_length = state->_cam_intrinsics_cameras.at(cam_id)->get_value()(0);
     double sigma_px_norm = _options.sigma_pix / focal_length;
     double sigma_c = state->_options.sigma_constraint;
     Eigen::Vector3d cp_inG = -abcd.head(3) * abcd(3);
     Eigen::VectorXd stateI = state->_imu->pose()->value();
-    Eigen::VectorXd calib0 = state->_calib_IMUtoCAM.at(0)->value();
+    Eigen::VectorXd calib0 = state->_calib_IMUtoCAM.at(cam_id)->value();
     if (!PlaneFitting::optimize_plane(plane_feats[featspair.first], cp_inG, clones_cam, sigma_px_norm, sigma_c, false, stateI, calib0))
       continue;
     abcd.head(3) = cp_inG / cp_inG.norm();

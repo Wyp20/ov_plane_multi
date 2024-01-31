@@ -245,6 +245,7 @@ void UpdaterMSCKF::update(std::shared_ptr<State> state, std::vector<std::shared_
             state->_features_SLAM_to_PLANE.at(feat.first) != 0) {
           plane_feat_count[planeid]++;
           auto featptr = std::make_shared<Feature>();
+          featptr->anchor_cam_id = feat.second->_unique_camera_id;
           featptr->featid = feat.second->_featid;
           featptr->p_FinG = feat.second->get_xyz(false);
           assert(feat.second->_feat_representation == LandmarkRepresentation::Representation::GLOBAL_3D);
@@ -261,6 +262,7 @@ void UpdaterMSCKF::update(std::shared_ptr<State> state, std::vector<std::shared_
 
     // Try to triangulate the planes
     for (const auto &featspair : plane_feats) {
+      size_t cam_id = featspair.second.at(0)->anchor_cam_id;
 
       // If the plane is in the state, no need to triangulate it
       if (state->_features_PLANE.find(featspair.first) != state->_features_PLANE.end()) {
@@ -270,11 +272,11 @@ void UpdaterMSCKF::update(std::shared_ptr<State> state, std::vector<std::shared_
 
         // Try to optimize the set of features to the current plane estimate
         // TODO: be smarter about how we get focal length here...
-        double focal_length = state->_cam_intrinsics_cameras.at(0)->get_value()(0);
+        double focal_length = state->_cam_intrinsics_cameras.at(cam_id)->get_value()(0);
         double sigma_px_norm = _options.sigma_pix / focal_length;
         double sigma_c = state->_options.sigma_constraint;
         Eigen::VectorXd stateI = state->_imu->pose()->value();
-        Eigen::VectorXd calib0 = state->_calib_IMUtoCAM.at(0)->value();
+        Eigen::VectorXd calib0 = state->_calib_IMUtoCAM.at(cam_id)->value();
         if (state->_options.use_refine_plane_feat &&
             !PlaneFitting::optimize_plane(plane_feats[featspair.first], cp_inG, clones_cam, sigma_px_norm, sigma_c, true, stateI, calib0))
           continue;
@@ -343,12 +345,12 @@ void UpdaterMSCKF::update(std::shared_ptr<State> state, std::vector<std::shared_
 
       // Try to optimize this plane
       // TODO: be smarter about how we get focal length here...
-      double focal_length = state->_cam_intrinsics_cameras.at(0)->get_value()(0);
+      double focal_length = state->_cam_intrinsics_cameras.at(cam_id)->get_value()(0);
       double sigma_px_norm = _options.sigma_pix / focal_length;
       double sigma_c = state->_options.sigma_constraint;
       Eigen::Vector3d cp_inG = -abcd.head(3) * abcd(3);
       Eigen::VectorXd stateI = state->_imu->pose()->value();
-      Eigen::VectorXd calib0 = state->_calib_IMUtoCAM.at(0)->value();
+      Eigen::VectorXd calib0 = state->_calib_IMUtoCAM.at(cam_id)->value();
       if (state->_options.use_refine_plane_feat &&
           !PlaneFitting::optimize_plane(plane_feats[featspair.first], cp_inG, clones_cam, sigma_px_norm, sigma_c, false, stateI, calib0))
         continue;
