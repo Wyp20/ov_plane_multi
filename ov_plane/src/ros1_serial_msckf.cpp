@@ -193,6 +193,16 @@ int main(int argc, char **argv) {
   //===================================================================================
   //===================================================================================
 
+  auto cvt_msgImage = [](rosbag::MessageInstance msg) {
+    sensor_msgs::ImagePtr img_i;
+    sensor_msgs::CompressedImage::ConstPtr img_c = msg.instantiate<sensor_msgs::CompressedImage>();
+    if (img_c != nullptr) {
+      cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(img_c, sensor_msgs::image_encodings::BGR8);
+      img_i = cv_ptr->toImageMsg();
+    } else
+      img_i = msg.instantiate<sensor_msgs::Image>();
+    return img_i;
+  };
   // Loop through our message array, and lets process them
   std::set<int> used_index;
   for (int m = 0; m < (int)msgs.size(); m++) {
@@ -263,13 +273,13 @@ int main(int argc, char **argv) {
       // Pass our data into our visualizer callbacks!
       // PRINT_DEBUG("processing cam = %.3f sec\n", msgs.at(m).getTime().toSec() - time_init.toSec());
       if (params.state_options.num_cameras == 1) {
-        viz->callback_monocular(msgs.at(camid_to_msg_index.at(0)).instantiate<sensor_msgs::Image>(), 0);
+        viz->callback_monocular(cvt_msgImage(msgs.at(camid_to_msg_index.at(0))), 0);
       } else if (params.state_options.num_cameras == 2) {
         auto msg0 = msgs.at(camid_to_msg_index.at(0));
         auto msg1 = msgs.at(camid_to_msg_index.at(1));
         used_index.insert(camid_to_msg_index.at(0)); // skip this message
         used_index.insert(camid_to_msg_index.at(1)); // skip this message
-        viz->callback_stereo(msg0.instantiate<sensor_msgs::Image>(), msg1.instantiate<sensor_msgs::Image>(), 0, 1);
+        viz->callback_stereo(cvt_msgImage(msg0), cvt_msgImage(msg1), 0, 1);
       } else {
         PRINT_ERROR(RED "[SERIAL]: We currently only support 1 or 2 camera serial input....\n" RESET);
         return EXIT_FAILURE;

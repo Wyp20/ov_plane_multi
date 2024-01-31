@@ -418,6 +418,7 @@ void ROS1Visualizer::callback_inertial(const sensor_msgs::Imu::ConstPtr &msg) {
   message.timestamp = msg->header.stamp.toSec();
   message.wm << msg->angular_velocity.x, msg->angular_velocity.y, msg->angular_velocity.z;
   message.am << msg->linear_acceleration.x, msg->linear_acceleration.y, msg->linear_acceleration.z;
+  message.am *= 9.81;
 
   // send it to our VIO system
   _app->feed_measurement_imu(message);
@@ -710,14 +711,14 @@ void ROS1Visualizer::publish_features() {
   pub_points_aruco.publish(cloud_ARUCO);
 
   // Publish recovered features in our feat tracker
-  std::shared_ptr<TrackPlane> trackPlane = std::dynamic_pointer_cast<TrackPlane>(_app->get_feattrack());
-  if (trackPlane != nullptr) {
-    std::vector<Eigen::Vector3d> feats_tracker;
-    for (auto const &tmp : trackPlane->get_features())
-      feats_tracker.push_back(tmp.second);
-    sensor_msgs::PointCloud2 cloud_TRACK = ROSVisualizerHelper::get_ros_pointcloud(feats_tracker);
-    pub_points_tracker.publish(cloud_TRACK);
-  }
+  // std::shared_ptr<TrackPlane> trackPlane = std::dynamic_pointer_cast<TrackPlane>(_app->get_feattrack());
+  // if (trackPlane != nullptr) {
+  //   std::vector<Eigen::Vector3d> feats_tracker;
+  //   for (auto const &tmp : trackPlane->get_features())
+  //     feats_tracker.push_back(tmp.second);
+  //   sensor_msgs::PointCloud2 cloud_TRACK = ROSVisualizerHelper::get_ros_pointcloud(feats_tracker);
+  //   pub_points_tracker.publish(cloud_TRACK);
+  // }
 
   // Get our good SIMULATION features
   if (_sim != nullptr) {

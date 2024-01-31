@@ -131,20 +131,28 @@ public:
   std::map<size_t, Eigen::MatrixXd> hist_calib;
 
   /// Get features we have successfully triangulated
-  std::map<size_t, Eigen::Vector3d> get_features() {
+  std::map<size_t, Eigen::Vector3d> get_features(size_t cam_id) {
     std::lock_guard<std::mutex> lckv(mtx_hist_vars);
-    return hist_feat_inG;
+    return hist_feat_inG_all[cam_id];
   }
 
   /// Get feature id to plane id map
   std::map<size_t, size_t> get_feature2plane() {
+    std::map<size_t, size_t> hist_feat_to_plane;
     std::lock_guard<std::mutex> lckv(mtx_hist_vars);
+    for (auto &item : hist_feat_to_plane_all) {
+      hist_feat_to_plane.insert(item.second.begin(), item.second.end());
+    }
     return hist_feat_to_plane;
   }
 
   /// Return history of planes which have been merged to new ones
   std::map<size_t, std::set<size_t>> get_plane2oldplane() {
+    std::map<size_t, std::set<size_t>> hist_plane_to_oldplanes;
     std::lock_guard<std::mutex> lckv(mtx_hist_vars);
+    for (auto &item : hist_plane_to_oldplanes_all) {
+      hist_plane_to_oldplanes.insert(item.second.begin(), item.second.end());
+    }
     return hist_plane_to_oldplanes;
   }
 
@@ -211,7 +219,7 @@ protected:
    * @brief Remove any features that are not seen from the current frame
    * @param ids vector of feature ids
    */
-  void remove_feats(std::vector<size_t> &ids);
+  void remove_feats(size_t cam_id, std::vector<size_t> &ids);
 
   // Parameters for our FAST grid detector
   int threshold;
@@ -249,18 +257,18 @@ protected:
   std::map<size_t, std::vector<cv::KeyPoint>> tri_cdt_vert_pts;
 
   /// Master classification of features nd their planes ids
-  std::map<size_t, size_t> hist_feat_to_plane;
+  std::map<size_t,std::map<size_t, size_t>> hist_feat_to_plane_all;
 
   /// Master list of planes which have been merged into others
-  std::map<size_t, std::set<size_t>> hist_plane_to_oldplanes;
+  std::map<size_t,std::map<size_t, std::set<size_t>>> hist_plane_to_oldplanes_all;
 
   // Triangulated 3d position of each features and their linear systems
   std::mutex mtx_hist_vars;
-  std::map<size_t, Eigen::Vector3d> hist_feat_inG;
-  std::map<size_t, Eigen::Matrix3d> hist_feat_linsys_A;
-  std::map<size_t, Eigen::Vector3d> hist_feat_linsys_b;
-  std::map<size_t, int> hist_feat_linsys_count;
-  std::map<size_t, std::vector<Eigen::Vector3d>> hist_feat_norms_inG;
+  std::map<size_t,std::map<size_t, Eigen::Vector3d>> hist_feat_inG_all;
+  std::map<size_t,std::map<size_t, Eigen::Matrix3d>> hist_feat_linsys_A_all;
+  std::map<size_t,std::map<size_t, Eigen::Vector3d>> hist_feat_linsys_b_all;
+  std::map<size_t,std::map<size_t, int>> hist_feat_linsys_count_all;
+  std::map<size_t,std::map<size_t, std::vector<Eigen::Vector3d>>> hist_feat_norms_inG_all;
 
   // Record the tracking info
   double _tracking_time_total = 0.0;

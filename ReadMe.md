@@ -1,3 +1,18 @@
+# Modification
+
+## Feature
+1. Support for **sensor_msgs::CompressedImage**
+2. Support for **binocular camera**
+
+## Runing - Real-World Datasets
+Supporting the [FAST-LIVO-Datasets](https://connecthkuhk-my.sharepoint.com/:f:/g/personal/zhengcr_connect_hku_hk/Esiqlmaql0dPreuOhiHlXl4Bqu5RRRIViK1EyuR4h1_n4w?e=fZdVn0)
+
+<div align="center">
+    <img src="config/fast_livo/binocular.png" width=50% >
+</div>
+
+Testing with the **hku1.bag** resulted in a 60 cm positional drift.
+
 # Monocular Visual-Inertial Odometry with Planar Regularities 
 
 

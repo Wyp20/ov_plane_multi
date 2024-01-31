@@ -85,6 +85,9 @@ void TrackPlane::feed_new_camera(const CameraData &message) {
   // If we are doing binocular tracking, then we should parallize our tracking
   if (num_images == 1) {
     feed_monocular(message, 0);
+  } else if (num_images == 2){
+    feed_monocular(message, 0);
+    feed_monocular(message, 1);
   } else {
     PRINT_ERROR(RED "ONLY MONO PLANE TRACKING SUPPORTED!\n" RESET);
     std::exit(EXIT_FAILURE);
@@ -100,7 +103,7 @@ void TrackPlane::display_active(cv::Mat &img_out, int r1, int g1, int b1, int r2
   std::map<size_t, std::vector<Eigen::Vector3d>> tri_cdt_tri_norms_cache;
   std::map<size_t, std::vector<CDT::V2d<float>>> tri_cdt_verts_cache;
   std::map<size_t, std::vector<size_t>> tri_cdt_vert_ids_cache;
-  std::map<size_t, std::vector<Eigen::Vector3d>> hist_feat_norms_inG_cache;
+  std::map<size_t, std::map<size_t, std::vector<Eigen::Vector3d>>> hist_feat_norms_inG_all_cache;
   {
     std::lock_guard<std::mutex> lckv(mtx_last_vars);
     img_last_cache = tri_img_last;
@@ -113,7 +116,7 @@ void TrackPlane::display_active(cv::Mat &img_out, int r1, int g1, int b1, int r2
   }
   {
     std::lock_guard<std::mutex> lckv(mtx_hist_vars);
-    hist_feat_norms_inG_cache = hist_feat_norms_inG;
+    hist_feat_norms_inG_all_cache = hist_feat_norms_inG_all;
   }
 
   // Get the largest width and height
@@ -181,6 +184,7 @@ void TrackPlane::display_active(cv::Mat &img_out, int r1, int g1, int b1, int r2
 
     // Debug, draw on our image!
     for (auto const &tri : tri_cdt_tri_cache[pair.first]) {
+      auto const &hist_feat_norms_inG_cache = hist_feat_norms_inG_all_cache[pair.first];
 
       // assert that we don't have any invalid..
       assert(tri.vertices[0] != CDT::noVertex);
@@ -259,8 +263,7 @@ void TrackPlane::display_history_plane(cv::Mat &img_out, int r1, int g1, int b1,
     ids_last_cache = ids_last;
   }
   {
-    std::lock_guard<std::mutex> lckv(mtx_hist_vars);
-    hist_feat_to_plane_cache = hist_feat_to_plane;
+    hist_feat_to_plane_cache = get_feature2plane();
   }
 
   // Count how many features are on the plane
@@ -387,7 +390,8 @@ void TrackPlane::display_history_plane(cv::Mat &img_out, int r1, int g1, int b1,
 void TrackPlane::get_tracking_info(PlaneTrackingInfo &track_info) {
 
   // Lock out mutex
-  std::lock_guard<std::mutex> lckv(mtx_hist_vars);
+  std::map<size_t, size_t> hist_feat_to_plane = get_feature2plane();
+  std::map<size_t, std::set<size_t>> hist_plane_to_oldplanes = get_plane2oldplane();
 
   // Group features by plane id, count number of features on each plane
   std::map<size_t, size_t> plane_to_feat;
@@ -578,6 +582,14 @@ void TrackPlane::feed_monocular(const CameraData &message, size_t msg_id) {
 }
 
 void TrackPlane::perform_plane_detection_monocular(size_t cam_id) {
+  std::map<size_t, Eigen::Vector3d> &hist_feat_inG = hist_feat_inG_all[cam_id];
+  std::map<size_t, Eigen::Matrix3d> &hist_feat_linsys_A = hist_feat_linsys_A_all[cam_id];
+  std::map<size_t, Eigen::Vector3d> &hist_feat_linsys_b = hist_feat_linsys_b_all[cam_id];
+  std::map<size_t, int> &hist_feat_linsys_count = hist_feat_linsys_count_all[cam_id];
+  std::map<size_t, std::vector<Eigen::Vector3d>> &hist_feat_norms_inG = hist_feat_norms_inG_all[cam_id];
+  std::map<size_t, size_t> &hist_feat_to_plane = hist_feat_to_plane_all[cam_id];
+  std::map<size_t, std::set<size_t>> &hist_plane_to_oldplanes = hist_plane_to_oldplanes_all[cam_id];
+
 
   // Lock the system
   auto rTP1 = boost::posix_time::microsec_clock::local_time();
@@ -607,7 +619,7 @@ void TrackPlane::perform_plane_detection_monocular(size_t cam_id) {
 
   // Remove any old features that are not seen in this frame
   // NOTE: this won't work if we are doing loop-closure...
-  remove_feats(ids_left);
+  remove_feats(cam_id, ids_left);
 
   // IMU historical clone
   Eigen::MatrixXd state = hist_state.at(time);
@@ -1356,7 +1368,12 @@ void TrackPlane::perform_matching(const std::vector<cv::Mat> &img0pyr, const std
   }
 }
 
-void TrackPlane::remove_feats(std::vector<size_t> &ids) {
+void TrackPlane::remove_feats(size_t cam_id, std::vector<size_t> &ids) {
+  std::map<size_t, Eigen::Vector3d> &hist_feat_inG = hist_feat_inG_all[cam_id];
+  std::map<size_t, Eigen::Matrix3d> &hist_feat_linsys_A = hist_feat_linsys_A_all[cam_id];
+  std::map<size_t, Eigen::Vector3d> &hist_feat_linsys_b = hist_feat_linsys_b_all[cam_id];
+  std::map<size_t, int> &hist_feat_linsys_count = hist_feat_linsys_count_all[cam_id];
+  std::map<size_t, std::vector<Eigen::Vector3d>> &hist_feat_norms_inG = hist_feat_norms_inG_all[cam_id];
 
   // Remove any old features that are not seen in this frame
   // std::lock_guard<std::mutex> lckv(mtx_hist_vars);

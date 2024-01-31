@@ -1,0 +1,29 @@
+%YAML:1.0 # need to specify the file type at the top!
+
+cam0:
+  T_imu_cam:
+    - [ 0.00162756,  -0.0126747,    0.999919 ,  0.0996605]
+    - [  -0.999991, -0.00392989,  0.00157786 ,     0.1465]
+    - [ 0.00390957,   -0.999912,  -0.0126811 ,  0.0102481]
+    - [          0,           0,           0 ,          1]
+  cam_overlaps: [1]
+  camera_model: pinhole
+  distortion_coeffs: [0.218,0.213,0.104,0.093]
+  distortion_model: equidistant
+  intrinsics: [870.335,872.363,619.840,534.456]
+  resolution: [1280, 1024]
+  rostopic: /left_camera/image/compressed
+  timeshift_cam_imu: 0.00096
+cam1:
+  T_imu_cam:
+    - [ 0.00162756,  -0.0126747,    0.999919 ,  0.0996605]
+    - [  -0.999991, -0.00392989,  0.00157786 ,     0.1465]
+    - [ 0.00390957,   -0.999912,  -0.0126811 ,  0.0102481]
+    - [          0,           0,           0 ,          1]
+  cam_overlaps: [1]
+  camera_model: pinhole
+  distortion_coeffs: [0.218,0.213,0.104,0.093]
+  distortion_model: equidistant
+  intrinsics: [870.335,872.363,619.840,534.456]
+  resolution: [1280, 1024]
+  rostopic: /right_camera/image/compressed
